@@ -24,6 +24,18 @@ volatile unsigned char* port_d = (unsigned char*)0x2B;
 volatile unsigned char* ddr_d = (unsigned char*)0x2A;
 volatile unsigned char* pin_d = (unsigned char*)0x29;
 
+volatile unsigned char* port_a = (unsigned char*)0x22;
+volatile unsigned char* ddr_a = (unsigned char*)0x21;
+volatile unsigned char* pin_a = (unsigned char*)0x20;
+
+volatile unsigned char* port_g = (unsigned char*)0x34;
+volatile unsigned char* ddr_g = (unsigned char*)0x33;
+volatile unsigned char* pin_g = (unsigned char*)0x32;
+
+volatile unsigned char* port_l = (unsigned char*)0x10B;
+volatile unsigned char* ddr_l = (unsigned char*)0x10A;
+volatile unsigned char* pin_l = (unsigned char*)0x109;
+
 volatile unsigned char *myTCCR1A = (unsigned char *) 0x80;
 volatile unsigned char *myTCCR1B = (unsigned char *) 0x81;
 volatile unsigned char *myTCCR1C = (unsigned char *) 0x82;
@@ -37,7 +49,7 @@ volatile unsigned char *myTIFR1 =  (unsigned char *) 0x36;
 
 #define WATER_THRESHOLD 40
 #define TEMP_THRESHOLD 22
-
+i
 volatile unsigned char* pin_k  = (unsigned char *) 0x106;
 volatile unsigned char* port_k = (unsigned char *) 0x108;
 volatile unsigned char* pk_ddr = (unsigned char *) 0x107; 
@@ -86,14 +98,13 @@ void setup() {
 
   Wire.begin(); // required for clock module.
 
-  pinMode(41,OUTPUT);
-  pinMode(43,OUTPUT);
-  pinMode(45,OUTPUT);
-  pinMode(40,OUTPUT);
-  pinMode(39,OUTPUT);
-  pinMode(38,OUTPUT);
-  pinMode(23,INPUT);
-
+  set_as_output(ddr_g,0); //41
+  set_as_output(ddr_l,6); //43
+  set_as_output(ddr_l,4); //45
+  set_as_output(ddr_g,1); //40
+  set_as_output(ddr_g,2); //39
+  set_as_output(ddr_d,7); //38
+  *ddr_a &= ~(0b00000010);//set 23 as input
 
   // Set the Interrupt Mask Register to Enable Interrupt 4 and Interrupt 5
   EIMSK |= (1 << INT4) | (1 << INT5);
@@ -153,7 +164,7 @@ void loop() {
   // this is triggered from the interrupt! pin 2 = start, pin 3 = stop
   if (systemRunning) {
     static int waterTooLowPrinted = 0;
-    if (programState == ERROR && digitalRead(4) == 0) { // error and reset is low
+    if (programState == ERROR && (*pin_g & 0b00100000) == 0) { // error and reset is low 
       if (waterTooLowPrinted == 0) {
           Serial.println("Water too low!");
           waterTooLowPrinted=1;
@@ -163,7 +174,7 @@ void loop() {
       writeYellowLED(0);
       writeBlueLED(0);
       writeFan(0);
-    } else if (digitalRead(4) && (programState==ERROR)) { // reset pressed. Goto idle
+    } else if ((*pin_g & 0b00100000) && (programState==ERROR)) { // reset pressed. Goto idle
         programState = IDLE;
         runLCD();
         runAdjustmentMotor();
@@ -215,8 +226,8 @@ void loop() {
 
 
 void writeFan(int state) {
-     digitalWrite(43,state); // turn on fan?
-     digitalWrite(45,LOW); // turn on fan?
+     write_port(ddr_l, 6, state);// turn on fan?
+     write_port(ddr_l, 4, 0);// turn on fan?
 }
 
 int getWaterLevel() {
@@ -279,33 +290,33 @@ void getTimeStamp() {
 
 }
 void writeRedLED(int state) {
-  digitalWrite(41,state);
+  write_port(ddr_g, 0, state);
 }
 
 void writeYellowLED(int state) {
-  digitalWrite(40,state);
+  write_port(ddr_g, 1, state);
 }
 
 void writeGreenLED(int state) {
-  digitalWrite(39,state);
+  write_port(ddr_g, 2, state);
 }
 
 void writeBlueLED(int state) {
-  digitalWrite(38,state);
+  write_port(ddr_d, 7, state);
 }
 
 void toggleFan() {
    if (fanState) {
-     //turn on
-     digitalWrite(43,HIGH); // turn on fan?
-     digitalWrite(45,LOW); // turn on fan?
+     //turn on 
+     write_port(ddr_l, 6, 1);// turn on fan?
+     write_port(ddr_l, 4, 0);// turn on fan?
      fanState = 0;
      
    } else {
      //turn off
-      digitalWrite(45,LOW); //enable
-      digitalWrite(43,LOW); // turn on fan?
-      fanState = 1;
+     write_port(ddr_l, 6, 0);//enable
+     write_port(ddr_l, 4, 0);// turn on fan?
+     fanState = 1;
    }
 }
 
